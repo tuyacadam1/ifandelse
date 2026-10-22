@@ -1,1 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Secure Programming Exam Portal</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* Security & Anti-Cheat Styles */
+    body {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+    
+    /* Dynamic Watermark Canvas Overlay */
+    #watermarkCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 9999;
+      opacity: 0.18;
+    }
 
+    /* Custom Code Editor Style */
+    .code-editor {
+      font-family: 'Courier New', Courier, monospace;
+      tab-size: 4;
+      white-space: pre;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-none">
+
+  <!-- Watermark Overlay Canvas -->
+  <canvas id="watermarkCanvas"></canvas>
+
+  <!-- Navigation Bar -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-40 px-6 py-4 flex justify-between items-center">
+    <div class="flex items-center space-x-3">
+      <i class="fa-solid fa-shield-halved text-emerald-400 text-2xl"></i>
+      <span class="font-bold text-lg tracking-wide bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+        Secure Code Assessment Portal
+      </span>
+    </div>
+    
+    <!-- Student Header Status -->
+    <div id="headerStatus" class="hidden flex items-center space-x-6">
+      <div class="flex items-center space-x-2 text-sm bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg">
+        <i class="fa-solid fa-user text-slate-400"></i>
+        <span id="currentStudentDisplay" class="font-semibold text-emerald-300"></span>
+      </div>
+      
+      <div id="violationCounter" class="flex items-center space-x-2 text-sm bg-rose-950/60 border border-rose-800/80 text-rose-300 px-3 py-1.5 rounded-lg">
+        <i class="fa-solid fa-triangle-exclamation text-rose-400"></i>
+        <span>Violations: <strong id="violationCount" class="text-rose-200">0</strong></span>
+      </div>
+
+      <div class="flex items-center space-x-2 text-sm bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg">
+        <i class="fa-regular fa-clock text-slate-400"></i>
+        <span id="timerDisplay" class="font-mono text-cyan-300">00:00:00</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="container mx-auto px-4 py-8 max-w-5xl flex-grow">
+
+    <!-- LOGIN / STUDENT SELECTION VIEW -->
+    <section id="loginView" class="max-w-md mx-auto my-12 bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl relative z-10">
+      <div class="text-center mb-8">
+        <div class="inline-flex p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-full mb-4">
+          <i class="fa-solid fa-user-lock text-3xl text-emerald-400"></i>
+        </div>
+        <h1 class="text-2xl font-bold text-slate-100">Student Identification</h1>
+        <p class="text-sm text-slate-400 mt-2">Select your registered name to start the assigned evaluation.</p>
+      </div>
+
+      <form id="loginForm" onsubmit="startExam(event)" class="space-y-6">
+        <div>
+          <label for="studentSelect" class="block text-sm font-medium text-slate-300 mb-2">Select Student Name</label>
+          <select id="studentSelect" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition">
+            <option value="" disabled selected>-- Select your name --</option>
+          </select>
+        </div>
+
+        <div class="p-4 bg-slate-950/70 rounded-xl border border-slate-800 text-xs text-slate-400 space-y-2">
+          <p class="font-semibold text-amber-400 flex items-center gap-1.5">
+            <i class="fa-solid fa-triangle-exclamation"></i> Security Rules Enforced:
+          </p>
+          <ul class="list-disc list-inside space-y-1 pl-1">
+            <li>Exam runs in Fullscreen mode.</li>
+            <li>Tab switching and loss of focus are logged.</li>
+            <li>Screenshots and copy/paste are prohibited.</li>
+            <li>Background dynamic watermark is enabled.</li>
+          </ul>
+        </div>
+
+        <button type="submit" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-bold py-3.5 px-6 rounded-xl shadow-lg shadow-emerald-500/10 transition transform active:scale-[0.98]">
+          <i class="fa-solid fa-expand mr-2"></i> Enter Fullscreen & Start
+        </button>
+      </form>
+    </section>
+
+    <!-- EXAM VIEW -->
+    <section id="examView" class="hidden space-y-8 relative z-10">
+      
+      <!-- Instructions Banner -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex justify-between items-center flex-wrap gap-4">
+        <div>
+          <h2 class="text-lg font-bold text-emerald-400">Conditional Statement Assessment</h2>
+          <p class="text-xs text-slate-400">Complete both tasks using correct syntax logic.</p>
+        </div>
+        <span class="text-xs font-mono bg-slate-950 px-3 py-1.5 rounded-lg text-slate-400 border border-slate-800">
+          Target Language: Python / C / C++ / Java / JS
+        </span>
+      </div>
+
+      <!-- QUESTION 1 -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div class="flex items-center space-x-3">
+            <span class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold px-3 py-1 rounded-lg text-sm">Task 1</span>
+            <h3 class="font-semibold text-slate-200">Three-Branch Condition Logic</h3>
+          </div>
+          <span class="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-md">Structure: if, else if, else</span>
+        </div>
+
+        <div id="q1Prompt" class="text-sm text-slate-300 bg-slate-950/80 border border-slate-800/80 p-4 rounded-xl leading-relaxed">
+          <!-- Dynamically populated -->
+        </div>
+
+        <div>
+          <label for="q1Answer" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Write Code Solution</label>
+          <textarea id="q1Answer" rows="7" placeholder="# Write your code solution here..." class="code-editor w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-emerald-300 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition text-sm leading-relaxed"></textarea>
+        </div>
+      </div>
+
+      <!-- QUESTION 2 -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div class="flex items-center space-x-3">
+            <span class="bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 font-bold px-3 py-1 rounded-lg text-sm">Task 2</span>
+            <h3 class="font-semibold text-slate-200">Four-Branch Condition Logic</h3>
+          </div>
+          <span class="text-xs text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-1 rounded-md">Structure: if, elif, elif, else</span>
+        </div>
+
+        <div id="q2Prompt" class="text-sm text-slate-300 bg-slate-950/80 border border-slate-800/80 p-4 rounded-xl leading-relaxed">
+          <!-- Dynamically populated -->
+        </div>
+
+        <div>
+          <label for="q2Answer" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Write Code Solution</label>
+          <textarea id="q2Answer" rows="8" placeholder="# Write your code solution here..." class="code-editor w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-emerald-300 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition text-sm leading-relaxed"></textarea>
+        </div>
+      </div>
+
+      <!-- Submit Section -->
+      <div class="flex justify-end pt-4">
+        <button onclick="confirmSubmit()" class="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold py-3 px-8 rounded-xl shadow-lg transition transform active:scale-95 flex items-center space-x-2">
+          <i class="fa-solid fa-paper-plane"></i>
+          <span>Submit Final Examination</span>
+        </button>
+      </div>
+
+    </section>
+
+    <!-- SUBMISSION CONFIRMATION / SUMMARY MODAL -->
+    <div id="submitModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div class="flex items-center space-x-3">
+            <i class="fa-solid fa-circle-check text-2xl text-emerald-400"></i>
+            <h3 class="text-xl font-bold text-slate-100">Assessment Summary</h3>
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <div class="grid grid-cols-2 gap-4 text-sm bg-slate-950 p-4 rounded-xl border border-slate-800">
+            <div>
+              <p class="text-slate-400">Student Name:</p>
+              <p id="summaryStudent" class="font-bold text-emerald-400"></p>
+            </div>
+            <div>
+              <p class="text-slate-400">Security Violations:</p>
+              <p id="summaryViolations" class="font-bold text-rose-400"></p>
+            </div>
+          </div>
+
+          <div>
+            <p class="text-xs text-slate-400 uppercase font-semibold mb-1">Task 1 Answer</p>
+            <pre id="summaryQ1" class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-emerald-400 text-xs code-editor overflow-x-auto max-h-36"></pre>
+          </div>
+
+          <div>
+            <p class="text-xs text-slate-400 uppercase font-semibold mb-1">Task 2 Answer</p>
+            <pre id="summaryQ2" class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-emerald-400 text-xs code-editor overflow-x-auto max-h-36"></pre>
+          </div>
+        </div>
+
+        <div class="flex space-x-3 justify-end pt-2 border-t border-slate-800">
+          <button onclick="closeSubmitModal()" class="px-5 py-2.5 rounded-xl border border-slate-700 hover:bg-slate-800 text-slate-300 text-sm font-semibold transition">
+            Back to Edit
+          </button>
+          <button onclick="finalizeSubmission()" class="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm transition">
+            Confirm & Finish Test
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- FINAL COMPLETED SCREEN -->
+    <section id="completedView" class="hidden text-center my-20 space-y-6 max-w-lg mx-auto bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl relative z-10">
+      <div class="inline-flex p-5 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-emerald-400 text-4xl mb-2">
+        <i class="fa-solid fa-lock"></i>
+      </div>
+      <h2 class="text-2xl font-bold text-slate-100">Exam Submitted & Locked</h2>
+      <p class="text-slate-400 text-sm">Your answers and violation log have been safely recorded. You may now close this browser window or exit.</p>
+      <div class="p-4 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-400">
+        Status: <span class="text-emerald-400 font-bold">Successfully Logged</span>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- WARNING OVERLAY FOR CHEATING / FOCUS LOSS -->
+  <div id="securityModal" class="fixed inset-0 bg-rose-950/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-rose-800/80 rounded-2xl max-w-md w-full p-6 text-center space-y-4 shadow-2xl">
+      <div class="inline-flex p-4 bg-rose-500/10 border border-rose-500/30 rounded-full text-rose-400 text-3xl">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <h3 class="text-xl font-bold text-rose-300">Security Warning Recorded!</h3>
+      <p id="securityModalMsg" class="text-sm text-slate-300">
+        Focus loss or prohibited window activity detected.
+      </p>
+      <p class="text-xs text-rose-400/80 bg-rose-950/40 p-2.5 rounded-lg border border-rose-900/50">
+        This incident has been incremented in your exam violation report.
+      </p>
+      <button onclick="dismissSecurityModal()" class="w-full py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl transition text-sm">
+        Return to Examination
+      </button>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800 py-4 text-center text-xs text-slate-500">
+    Automated Code Assessment System &bull; Strictly Monitored Session
+  </footer>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    // STUDENT QUESTION MAPPING DATA
+    const studentData = {
+      "Gulay": {
+        q1: "Write a program that takes a student's grade percentage 'score'. Print 'Passed' if score is 75 or higher, 'Conditional' if score is between 60 and 74, and 'Failed' otherwise.",
+        q2: "Write a script that takes a character's health points ('hp'). Print 'Critical' if hp < 20, 'Low' if 20 <= hp < 50, 'Moderate' if 50 <= hp < 80, and 'Full' otherwise."
+      },
+      "Pabular": {
+        q1: "Write a script that accepts an integer 'temperature' in Celsius. Print 'Hot' if temperature > 30, 'Warm' if temperature is between 20 and 30, and 'Cold' otherwise.",
+        q2: "Create a program that categorizes a vehicle speed 'v' in km/h. Print 'Slow' if v < 30, 'Normal' if 30 <= v < 80, 'Fast' if 80 <= v < 120, and 'Overspeeding' otherwise."
+      },
+      "Cañada": {
+        q1: "Write a code snippet checking a user's 'age'. Print 'Adult' if age >= 18, 'Teen' if 13 <= age < 18, and 'Child' otherwise.",
+        q2: "Determine the movie ticket price based on 'age': print '$5' if age < 12, '$8' if 12 <= age < 18, '$12' if 18 <= age < 60, and '$7' otherwise."
+      },
+      "Sebolino": {
+        q1: "Write a program to evaluate a store purchase 'total'. If total >= 1000, grant a '20% Discount'. If total >= 500, grant a '10% Discount'. Otherwise, print 'No Discount'.",
+        q2: "Classify a worker's experience in years ('exp'). Print 'Trainee' if exp < 1, 'Junior' if 1 <= exp < 3, 'Mid-level' if 3 <= exp < 6, and 'Senior' otherwise."
+      },
+      "Galang": {
+        q1: "Write a function that accepts a number 'num'. Print 'Positive' if num > 0, 'Zero' if num == 0, and 'Negative' otherwise.",
+        q2: "Write a script that checks a time value 'hour' (24-hour format). Print 'Morning' if 5 <= hour < 12, 'Afternoon' if 12 <= hour < 17, 'Evening' if 17 <= hour < 22, and 'Night' otherwise."
+      },
+      "Bacabis": {
+        q1: "Evaluate a bank balance 'bal'. Print 'Good Standing' if bal >= 5000, 'Low Balance' if 0 <= bal < 5000, and 'Overdrawn' otherwise.",
+        q2: "Determine academic honors based on GPA ('gpa'): print 'Summa Cum Laude' if gpa >= 3.9, 'Magna Cum Laude' if 3.7 <= gpa < 3.9, 'Cum Laude' if 3.5 <= gpa < 3.7, and 'Regular Passing' otherwise."
+      },
+      "Estel": {
+        q1: "Check an athlete's race completion time 't' (in seconds). Print 'Gold' if t <= 10, 'Silver' if 10 < t <= 12, and 'Bronze' otherwise.",
+        q2: "Categorize wind speed 'w' (in km/h). Print 'Calm' if w < 10, 'Breezy' if 10 <= w < 30, 'Windy' if 30 <= w < 60, and 'Gale' otherwise."
+      },
+      "Jandomon": {
+        q1: "Write a script checking battery percentage 'batt'. Print 'Fully Charged' if batt == 100, 'Sufficient' if 20 <= batt < 100, and 'Low Battery' otherwise.",
+        q2: "Write a program to process coffee cup sizes in ounces ('oz'). Print 'Small' if oz <= 8, 'Medium' if 8 < oz <= 12, 'Large' if 12 < oz <= 16, and 'Extra Large' otherwise."
+      },
+      "Yandug": {
+        q1: "Check a user's monthly income 'inc'. Print 'Tax Bracket A' if inc >= 50000, 'Tax Bracket B' if 20000 <= inc < 50000, and 'Tax Exempt' otherwise.",
+        q2: "Evaluate an earthquake magnitude 'mag'. Print 'Minor' if mag < 4.0, 'Light' if 4.0 <= mag < 5.0, 'Moderate' if 5.0 <= mag < 6.0, and 'Strong' otherwise."
+      },
+      "Rife": {
+        q1: "Given a student's attendance percentage 'att'. Print 'Eligible' if att >= 80, 'Warning' if 65 <= att < 80, and 'Ineligible' otherwise.",
+        q2: "Determine clothing recommendation based on rainfall 'rain' (mm/hr). Print 'No Jacket' if rain == 0, 'Light Raincoat' if 0 < rain <= 5, 'Heavy Raincoat' if 5 < rain <= 15, and 'Stay Indoors' otherwise."
+      },
+      "Abasolo": {
+        q1: "Write a script that takes a file size 'size_mb'. Print 'Large File' if size_mb > 500, 'Medium File' if 100 <= size_mb <= 500, and 'Small File' otherwise.",
+        q2: "Classify a customer's loyalty points 'pts'. Print 'Bronze' if pts < 100, 'Silver' if 100 <= pts < 500, 'Gold' if 500 <= pts < 1000, and 'Platinum' otherwise."
+      },
+      "Pabualan": {
+        q1: "Check a car's fuel tank level percentage 'fuel'. Print 'Full' if fuel >= 90, 'Half Tank' if 30 <= fuel < 90, and 'Refuel Now' otherwise.",
+        q2: "Evaluate typing speed in words per minute ('wpm'). Print 'Beginner' if wpm < 30, 'Intermediate' if 30 <= wpm < 60, 'Advanced' if 60 <= wpm < 90, and 'Expert' otherwise."
+      },
+      "Tiozon": {
+        q1: "Check an online order shipping distance 'dist' in km. Print 'Local Shipping' if dist <= 50, 'Regional Shipping' if 50 < dist <= 200, and 'National Shipping' otherwise.",
+        q2: "Assign a grade mark based on score 's': print 'A' if s >= 90, 'B' if 80 <= s < 90, 'C' if 70 <= s < 80, and 'Repeat' otherwise."
+      },
+      "Creencia": {
+        q1: "Check a water temperature 'temp_c'. Print 'Steam' if temp_c >= 100, 'Liquid' if 0 < temp_c < 100, and 'Ice' otherwise.",
+        q2: "Categorize noise level in decibels ('db'). Print 'Quiet' if db < 40, 'Moderate' if 40 <= db < 70, 'Loud' if 70 <= db < 100, and 'Dangerous' otherwise."
+      },
+      "Bantilan": {
+        q1: "Check a smartphone storage percentage 'used'. Print 'Storage Full' if used >= 95, 'Storage Warning' if 80 <= used < 95, and 'Storage OK' otherwise.",
+        q2: "Process a package weight 'w' in kg. Print 'Light' if w <= 2, 'Standard' if 2 < w <= 10, 'Heavy' if 10 < w <= 25, and 'Overweight' otherwise."
+      },
+      "Bantug": {
+        q1: "Check a server response time 'ms'. Print 'Fast' if ms < 100, 'Acceptable' if 100 <= ms <= 300, and 'Slow Connection' otherwise.",
+        q2: "Check credit score 'cs'. Print 'Poor' if cs < 580, 'Fair' if 580 <= cs < 670, 'Good' if 670 <= cs < 740, and 'Excellent' otherwise."
+      },
+      "De Lara": {
+        q1: "Evaluate an employee's overtime hours 'ot'. Print 'High Overtime' if ot > 15, 'Normal Overtime' if 1 <= ot <= 15, and 'No Overtime' otherwise.",
+        q2: "Categorize a game player's level 'lvl'. Print 'Novice' if lvl < 10, 'Adventurer' if 10 <= lvl < 25, 'Veteran' if 25 <= lvl < 50, and 'Master' otherwise."
+      },
+      "Talja": {
+        q1: "Check air quality index 'aqi'. Print 'Good' if aqi <= 50, 'Moderate' if 51 <= aqi <= 100, and 'Unhealthy' otherwise.",
+        q2: "Classify daily step count 'steps'. Print 'Sedentary' if steps < 5000, 'Low Active' if 5000 <= steps < 7500, 'Active' if 7500 <= steps < 10000, and 'Very Active' otherwise."
+      },
+      "Tan": {
+        q1: "Evaluate a user's password length 'len'. Print 'Strong' if len >= 12, 'Moderate' if 8 <= len < 12, and 'Weak' otherwise.",
+        q2: "Categorize humidity percentage 'h'. Print 'Dry' if h < 30, 'Comfortable' if 30 <= h <= 60, 'Humid' if 60 < h <= 80, and 'Sweltering' otherwise."
+      },
+      "Calustre": {
+        q1: "Check Wi-Fi signal strength 'rssi' (dBm). Print 'Strong Signal' if rssi >= -60, 'Weak Signal' if -80 <= rssi < -60, and 'No Signal' otherwise.",
+        q2: "Determine shipping fee based on total cart value 'v': print 'Free' if v >= 100, '$5' if 50 <= v < 100, '$10' if 20 <= v < 50, and '$15' otherwise."
+      },
+      "Pocong": {
+        q1: "Check a room temperature setting 't'. Print 'Heating On' if t < 18, 'Climate Ideal' if 18 <= t <= 24, and 'Cooling On' otherwise.",
+        q2: "Classify a movie runtime 'mins'. Print 'Short' if mins < 90, 'Standard' if 90 <= mins <= 120, 'Long' if 120 < mins <= 180, and 'Epic' otherwise."
+      },
+      "Ragmac": {
+        q1: "Write a program to evaluate download speed 'speed_mbps'. Print 'High Speed' if speed_mbps >= 100, 'Medium Speed' if 25 <= speed_mbps < 100, and 'Low Speed' otherwise.",
+        q2: "Categorize a restaurant bill amount 'b' for tipping advice. Print 'Small' if b < 20, 'Average' if 20 <= b < 50, 'Large' if 50 <= b < 100, and 'Banquet' otherwise."
+      },
+      "Manla": {
+        q1: "Evaluate a car engine RPM value 'rpm'. Print 'Redline' if rpm > 6000, 'Normal' if 1000 <= rpm <= 6000, and 'Engine Off / Idle' otherwise.",
+        q2: "Check age for amusement park ride restrictions 'height_cm'. Print 'Under Height' if height_cm < 110, 'Junior Rider' if 110 <= height_cm < 140, 'Full Rider' if 140 <= height_cm <= 200, and 'Exceeds Limit' otherwise."
+      },
+      "Gutang": {
+        q1: "Check RAM usage percentage 'ram'. Print 'Critical Usage' if ram >= 90, 'Moderate Usage' if 50 <= ram < 90, and 'Low Usage' otherwise.",
+        q2: "Classify a loan duration in months 'm'. Print 'Short Term' if m <= 12, 'Medium Term' if 12 < m <= 36, 'Long Term' if 36 < m <= 72, and 'Extended Term' otherwise."
+      },
+      "Miculob": {
+        q1: "Write a script for water consumption 'liters'. Print 'High Consumption' if liters > 300, 'Average' if 100 <= liters <= 300, and 'Low Consumption' otherwise.",
+        q2: "Determine discount tiers based on items purchased 'count': print 'No Discount' if count < 3, '5% Off' if 3 <= count < 6, '10% Off' if 6 <= count < 10, and '20% Off' otherwise."
+      },
+      "Dima-ano": {
+        q1: "Check light intensity in lux 'lux'. Print 'Bright' if lux > 1000, 'Dim' if 100 <= lux <= 1000, and 'Dark' otherwise.",
+        q2: "Classify a runner's marathon time 'hrs'. Print 'Elite' if hrs < 2.5, 'Advanced' if 2.5 <= hrs < 3.5, 'Intermediate' if 3.5 <= hrs < 4.5, and 'Finisher' otherwise."
+      },
+      "Cubao": {
+        q1: "Check disk space remaining in GB 'disk'. Print 'Free Up Space' if disk < 10, 'Space Getting Low' if 10 <= disk <= 50, and 'Sufficient Space' otherwise.",
+        q2: "Evaluate hotel room star ratings 'stars'. Print 'Standard' if stars <= 2, 'Comfort' if stars == 3, 'Deluxe' if stars == 4, and 'Luxury' otherwise."
+      },
+      "Danuco": {
+        q1: "Evaluate daily sleep hours 'hrs'. Print 'Optimal' if 7 <= hrs <= 9, 'Over-sleeping' if hrs > 9, and 'Sleep Deprived' otherwise.",
+        q2: "Check mobile data usage 'gb'. Print 'Tier 1' if gb <= 2, 'Tier 2' if 2 < gb <= 5, 'Tier 3' if 5 < gb <= 10, and 'Unlimited Tier' otherwise."
+      },
+      "Gallo": {
+        q1: "Check processor temperature 'cpu_temp' in Celsius. Print 'Overheating' if cpu_temp > 85, 'Warm' if 50 <= cpu_temp <= 85, and 'Cool' otherwise.",
+        q2: "Categorize swimmer distance 'meters'. Print 'Sprint' if meters <= 100, 'Mid-Distance' if 100 < meters <= 400, 'Distance' if 400 < meters <= 1500, and 'Marathon' otherwise."
+      },
+      "Valencia": {
+        q1: "Determine gym membership status based on active days 'days'. Print 'Regular' if days >= 15, 'Occasional' if 5 <= days < 15, and 'Inactive' otherwise.",
+        q2: "Evaluate flight delay time in minutes 'mins'. Print 'On Time' if mins <= 15, 'Slight Delay' if 15 < mins <= 60, 'Major Delay' if 60 < mins <= 180, and 'Canceled' otherwise."
+      },
+      "Opeña": {
+        q1: "Check tire pressure in PSI 'psi'. Print 'Overinflated' if psi > 35, 'Optimal' if 30 <= psi <= 35, and 'Underinflated' otherwise.",
+        q2: "Categorize solar panel energy generation 'kw'. Print 'Low Yield' if kw < 5, 'Medium Yield' if 5 <= kw < 15, 'High Yield' if 15 <= kw < 30, and 'Peak Yield' otherwise."
+      },
+      "Ranara": {
+        q1: "Check bank transaction amount 'amt'. Print 'Flagged for Review' if amt > 10000, 'Standard Transfer' if 100 <= amt <= 10000, and 'Micro Transaction' otherwise.",
+        q2: "Classify concert venue capacity 'cap'. Print 'Club' if cap < 500, 'Hall' if 500 <= cap < 3000, 'Arena' if 3000 <= cap < 15000, and 'Stadium' otherwise."
+      },
+      "Españo": {
+        q1: "Determine oven preheat status 'temp'. Print 'Preheated' if temp >= 200, 'Warming Up' if 50 <= temp < 200, and 'Off' otherwise.",
+        q2: "Check annual plant growth in centimeters 'cm'. Print 'Slow Growth' if cm < 5, 'Moderate Growth' if 5 <= cm < 15, 'Fast Growth' if 15 <= cm < 30, and 'Rapid Growth' otherwise."
+      },
+      "Negro": {
+        q1: "Check elevator payload 'weight_kg'. Print 'Overloaded' if weight_kg > 800, 'Near Capacity' if 600 <= weight_kg <= 800, and 'Safe' otherwise.",
+        q2: "Classify video resolution height 'px'. Print 'SD' if px < 720, 'HD' if 720 <= px < 1080, 'FHD' if 1080 <= px < 2160, and '4K UHD' otherwise."
+      },
+      "Leonor": {
+        q1: "Check audio volume level 'vol'. Print 'Muted' if vol == 0, 'Safe Level' if 1 <= vol <= 70, and 'Too Loud' otherwise.",
+        q2: "Evaluate book length in pages 'pg'. Print 'Short Story' if pg < 50, 'Novella' if 50 <= pg < 200, 'Novel' if 200 <= pg < 500, and 'Epic Novel' otherwise."
+      },
+      "Daniel": {
+        q1: "Check solar panel battery storage percentage 'charge'. Print 'Fully Charged' if charge >= 98, 'Charging' if 20 <= charge < 98, and 'Critical Reserve' otherwise.",
+        q2: "Categorize coffee roast temp 'temp'. Print 'Light Roast' if temp < 200, 'Medium Roast' if 200 <= temp < 220, 'Dark Roast' if 220 <= temp < 240, and 'Over-roasted' otherwise."
+      },
+      "Misa": {
+        q1: "Determine student exam attempt eligibility 'attempts'. Print 'Allowed' if attempts < 3, 'Last Attempt' if attempts == 3, and 'Blocked' otherwise.",
+        q2: "Classify a software bug priority score 'p'. Print 'Low' if p < 3, 'Medium' if 3 <= p < 7, 'High' if 7 <= p < 9, and 'Critical' otherwise."
+      },
+      "Abelo": {
+        q1: "Check drone altitude 'alt' (meters). Print 'Above Limit' if alt > 120, 'In Flight' if 1 <= alt <= 120, and 'Grounded' otherwise.",
+        q2: "Categorize user account age in months 'm'. Print 'New Account' if m < 3, 'Established' if 3 <= m < 12, 'Loyal' if 12 <= m < 36, and 'VIP' otherwise."
+      },
+      "Calamba": {
+        q1: "Evaluate typing accuracy percentage 'acc'. Print 'High Accuracy' if acc >= 95, 'Acceptable' if 85 <= acc < 95, and 'Needs Improvement' otherwise.",
+        q2: "Determine shipping speed option by delivery days 'd'. Print 'Same Day' if d == 1, 'Express' if 2 <= d <= 3, 'Standard' if 4 <= d <= 7, and 'Economy' otherwise."
+      },
+      "Bajao": {
+        q1: "Evaluate EV charging power 'kw'. Print 'Fast Charging' if kw >= 50, 'Standard Charging' if 7 <= kw < 50, and 'Trickle Charging' otherwise.",
+        q2: "Classify tree age in years 'age'. Print 'Sapling' if age < 5, 'Young Tree' if 5 <= age < 20, 'Mature Tree' if 20 <= age < 100, and 'Ancient Tree' otherwise."
+      },
+      "Odrigue": {
+        q1: "Check water pH value 'ph'. Print 'Acidic' if ph < 6.5, 'Neutral' if 6.5 <= ph <= 7.5, and 'Alkaline' otherwise.",
+        q2: "Evaluate server CPU usage percentage 'usage'. Print 'Idle' if usage < 15, 'Normal' if 15 <= usage < 60, 'Heavy' if 60 <= usage < 90, and 'Overloaded' otherwise."
+      },
+      "Gamulo": {
+        q1: "Determine air conditioner fan speed mode by percentage 'speed'. Print 'High Mode' if speed >= 75, 'Medium Mode' if 35 <= speed < 75, and 'Quiet Mode' otherwise.",
+        q2: "Categorize athlete body mass index 'bmi'. Print 'Underweight' if bmi < 18.5, 'Normal Weight' if 18.5 <= bmi < 25, 'Overweight' if 25 <= bmi < 30, and 'Obese' otherwise."
+      }
+    };
+
+    // APP STATE
+    let currentStudent = "";
+    let violations = 0;
+    let examStarted = false;
+    let timerInterval = null;
+    let secondsElapsed = 0;
+
+    // POPULATE DROPDOWN
+    window.addEventListener("DOMContentLoaded", () => {
+      const select = document.getElementById("studentSelect");
+      Object.keys(studentData).sort().forEach(student => {
+        const option = document.createElement("option");
+        option.value = student;
+        option.textContent = student;
+        select.appendChild(option);
+      });
+
+      // Canvas Watermark resize initial
+      resizeCanvas();
+      window.addEventListener("resize", resizeCanvas);
+    });
+
+    // WATERMARK CANVAS LOGIC
+    function resizeCanvas() {
+      const canvas = document.getElementById("watermarkCanvas");
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      drawWatermark();
+    }
+
+    function drawWatermark() {
+      const canvas = document.getElementById("watermarkCanvas");
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (!examStarted) return;
+
+      const text = `${currentStudent} - ${new Date().toLocaleTimeString()} - SECURE EXAM`;
+      ctx.font = "bold 16px sans-serif";
+      ctx.fillStyle = "#34d399";
+
+      const stepX = 320;
+      const stepY = 180;
+
+      for (let x = 0; x < canvas.width + stepX; x += stepX) {
+        for (let y = 0; y < canvas.height + stepY; y += stepY) {
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate(-Math.PI / 12);
+          ctx.fillText(text, 0, 0);
+          ctx.restore();
+        }
+      }
+    }
+
+    // Refresh Watermark Live Timestamp
+    setInterval(() => {
+      if (examStarted) drawWatermark();
+    }, 1000);
+
+    // START EXAM WORKFLOW
+    function startExam(e) {
+      e.preventDefault();
+      const select = document.getElementById("studentSelect");
+      currentStudent = select.value;
+
+      if (!currentStudent) return;
+
+      // Request Fullscreen
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
+
+      // Hide login, show exam
+      document.getElementById("loginView").classList.add("hidden");
+      document.getElementById("examView").classList.remove("hidden");
+      document.getElementById("headerStatus").classList.remove("hidden");
+      document.getElementById("currentStudentDisplay").textContent = currentStudent;
+
+      // Render Questions
+      document.getElementById("q1Prompt").textContent = studentData[currentStudent].q1;
+      document.getElementById("q2Prompt").textContent = studentData[currentStudent].q2;
+
+      examStarted = true;
+
+      // Start Timer
+      timerInterval = setInterval(() => {
+        secondsElapsed++;
+        const hrs = String(Math.floor(secondsElapsed / 3600)).padStart(2, '0');
+        const mins = String(Math.floor((secondsElapsed % 3600) / 60)).padStart(2, '0');
+        const secs = String(secondsElapsed % 60).padStart(2, '0');
+        document.getElementById("timerDisplay").textContent = `${hrs}:${mins}:${secs}`;
+      }, 1000);
+
+      drawWatermark();
+    }
+
+    // SECURITY EVENT LISTENERS & ENFORCEMENT
+    function triggerSecurityViolation(reason) {
+      if (!examStarted) return;
+      violations++;
+      document.getElementById("violationCount").textContent = violations;
+      
+      const modal = document.getElementById("securityModal");
+      document.getElementById("securityModalMsg").textContent = reason;
+      modal.classList.remove("hidden");
+    }
+
+    function dismissSecurityModal() {
+      document.getElementById("securityModal").classList.add("hidden");
+    }
+
+    // Visibility / Tab Change Detection
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden && examStarted) {
+        triggerSecurityViolation("Tab switching or browser minimization detected!");
+      }
+    });
+
+    window.addEventListener("blur", () => {
+      if (examStarted) {
+        triggerSecurityViolation("Focus lost! Window or screen switched.");
+      }
+    });
+
+    // Disable Right Click / Context Menu
+    document.addEventListener("contextmenu", (e) => e.preventDefault());
+
+    // Block Screenshot & Printing Shortcuts
+    document.addEventListener("keyup", (e) => {
+      if (e.key === "PrintScreen") {
+        navigator.clipboard.writeText("");
+        triggerSecurityViolation("PrintScreen / Screenshot attempt detected!");
+      }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      // Prevent Ctrl+P, Ctrl+Shift+S, Cmd+Shift+3/4/5, Ctrl+U, etc.
+      if (
+        (e.ctrlKey && (e.key === 'p' || e.key === 'P' || e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S')) ||
+        (e.ctrlKey && e.shiftKey && (e.key === 'S' || e.key === 's' || e.key === 'I' || e.key === 'i')) ||
+        (e.metaKey && e.shiftKey && ['3', '4', '5'].includes(e.key))
+      ) {
+        e.preventDefault();
+        triggerSecurityViolation("Restricted key combination shortcut detected!");
+      }
+
+      // Enable Tab key inside textareas
+      if (e.key === 'Tab' && (e.target.id === 'q1Answer' || e.target.id === 'q2Answer')) {
+        e.preventDefault();
+        const start = e.target.selectionStart;
+        const end = e.target.selectionEnd;
+        e.target.value = e.target.value.substring(0, start) + "    " + e.target.value.substring(end);
+        e.target.selectionStart = e.target.selectionEnd = start + 4;
+      }
+    });
+
+    // SUBMISSION FLOW
+    function confirmSubmit() {
+      const q1Val = document.getElementById("q1Answer").value.trim();
+      const q2Val = document.getElementById("q2Answer").value.trim();
+
+      if (!q1Val || !q2Val) {
+        alert("Please provide code solutions for both tasks before submitting.");
+        return;
+      }
+
+      document.getElementById("summaryStudent").textContent = currentStudent;
+      document.getElementById("summaryViolations").textContent = `${violations} recorded`;
+      document.getElementById("summaryQ1").textContent = q1Val;
+      document.getElementById("summaryQ2").textContent = q2Val;
+
+      document.getElementById("submitModal").classList.remove("hidden");
+    }
+
+    function closeSubmitModal() {
+      document.getElementById("submitModal").classList.add("hidden");
+    }
+
+    function finalizeSubmission() {
+      examStarted = false;
+      clearInterval(timerInterval);
+
+      document.getElementById("submitModal").classList.add("hidden");
+      document.getElementById("examView").classList.add("hidden");
+      document.getElementById("headerStatus").classList.add("hidden");
+      document.getElementById("completedView").classList.remove("hidden");
+
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+  </script>
+</body>
+</html>
